@@ -15,3 +15,7 @@ function drawpic(data)
 
   run(`"c:\\program files (x86)\\google\\chrome\\application\\chrome.exe" $(pwd())\\temp.svg`)
 end
+
+function showpic()
+  run(`"c:\\program files (x86)\\google\\chrome\\application\\chrome.exe" $(pwd())\\temp.svg`)
+end
