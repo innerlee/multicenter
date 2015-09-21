@@ -27,14 +27,33 @@ end
 
 # lns: n*6 (x0,y0, vx,vy, a,b)
 # ls: n*4 ((x0,y0) (x1,y1))
-function drawvor(pts,lns)
+# use borderrect
+function drawvor(pts,lns,border)
   # preprocess them
   say()
   say("= drawvor =")
+
+  # clip lines
+  for i=1:size(lns,1)
+    ts=[intersectlns(lns[i,:],border[k,:])[1] for k=1:size(border,1)]
+    say("*ts*")
+    say(ts)
+    negs=ts[ts.<0]
+    if length(negs)>0
+      lns[i,5]=maximum([negs lns[i,5]])
+    end
+    pos=ts[ts.>0]
+    if length(pos)>0
+      lns[i,6]=max(lns[i,5],minimum([ts[ts.>0] lns[i,6]]))
+    end
+  end
+
+  # transforms
+  lns=[border;lns]
   ratio=max(b_width,b_height)
   pts=broadcast(/,broadcast(-,pts,[b_left b_bot]),[ratio ratio])
   lns=broadcast(/,broadcast(-,lns,[b_left b_bot 0 0 0 0]),[ratio ratio 1 1 ratio ratio])
-  say(lns)
+  say(size(lns))
 
   drawcomp(compose(context(),composepoints(pts),composelines(lns)))
 end
@@ -45,48 +64,96 @@ function intersectlns(ln1,ln2)
      ln1[4] -ln2[4]]
   b=(ln2[1:2]-ln1[1:2])''
 
-  say()
-  say("= intersectlns")
-  #say(size(b))
-  #say()
+  x=A\b
+  if x[2]<ln2[5]||x[2]>ln2[6]||x[1]<ln1[5]||x[1]>ln1[6]
+    return [NaN,NaN]
+  else
+    return x
+  end
+end
 
-  (A\b)[1]
+#
+function getline(pt1,pt2,i=0,j=0)
+  center=(pt1+pt2)/2
+  dir=pt2-pt1
+  len=sqrt(dir*(dir'))[1]
+  dir=dir/len
+  dir=[-dir[2],dir[1]]
+  ln=[center[1] center[2] dir[1] dir[2] -Inf Inf i j]
 end
 
 # use outer vars:
 # borderrect
 # sites
 function voron(sites)
-  M=2
-  pts=sites[1,:]
   say()
   say("== voron() ==")
-  lns=Array(Float64,0,6)
+  M=3
+  # sort along x axis
+  p=sortperm(sites[:,1])
+  sites=[sites[p[i],j] for i=1:size(sites,1),j=1:size(sites,2)]
 
+  # init pts arrray and lns array
+  pts=sites[1,:]
+  lns=Array(Float64,0,8)
+
+  # process points
   for i=2:min(M,size(sites,1))
-    for j=1:i-1
-      # add line
-      center=(sites[i,:]+sites[j,:])/2
-      dir=sites[j,:]-sites[i,:]
-      len=sqrt(dir*(dir'))[1]
-      say(len)
-      dir=dir/len
-      dir=[-dir[2],dir[1]]
-      ln=[center[1] center[2] dir[1] dir[2] -1 1]
-      ts=[intersectlns(ln,borderrect[k,:]) for k=1:size(borderrect,1)]
-      ln[5]=maximum(ts[ts.<0])
-      ln[6]=minimum(ts[ts.>0])
-      lns=[lns;ln]
-
-      t_top=intersectlns(ln,borderrect[1,:])
-say(ts[ts.>0])
+    # find nearest pt
+    diff=broadcast(-,sites[1:i-1,:],sites[i,:])
+    dist=sum(diff.*diff,2)
+    ind=indmin(dist)
+    say("i=$i")
+    # get first line
+    ln=getline(sites[i,:],sites[ind,:],i,ind)
+    say("lns")
+    say(lns)
+    ts=[intersectlns(ln,lns[k,:])[1] for k=1:size(lns,1)]
+    sortts=sort(ts)
+    negs=ts[ts.<0]
+    if length(negs)>0
+      ln[5]=max(ln[5],maximum(negs))
+      say("*5*")
+      say(ln[5])
     end
+    pos=ts[ts.>0]
+    if length(pos)>0
+      ln[6]=min(ln[6],minimum(pos))
+      say("*6*")
+      say(ln[6])
+    end
+
+    say(ts)
+    lns=[lns;ln]
+    say()
+    for j=size(lns,1):-1:1
+
+    end
+
+    #say(ln)
+
+    # for j=i-1:-1:1
+    #   # add line
+    #   center=(sites[i,:]+sites[j,:])/2
+    #   dir=sites[j,:]-sites[i,:]
+    #   len=sqrt(dir*(dir'))[1]
+    #   #say(len)
+    #   dir=dir/len
+    #   dir=[-dir[2],dir[1]]
+    #   ln=[center[1] center[2] dir[1] dir[2] -1 1 i j]
+    #   ts=[intersectlns(ln,borderrect[k,:])[1] for k=1:size(borderrect,1)]
+    #   ln[5]=maximum(ts[ts.<0])
+    #   ln[6]=minimum(ts[ts.>0])
+    #   lns=[lns;ln]
+    #
+    #   #say(ts[ts.>0])
+    # end
   end
 
-lns
+  lns
 end
 
-N=2
+N=3
 sites=rand(N,2)
 say()
 say("= sites =")
@@ -126,4 +193,4 @@ say("= lines: x0,y0, vx,vy, a,b =")
 say(borderrect)
 
 lns=voron(sites)
-drawvor(sites,[borderrect;lns])
+drawvor(sites,lns[:,1:6],borderrect)
