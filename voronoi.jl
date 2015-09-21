@@ -36,8 +36,8 @@ function drawvor(pts,lns,border)
   # clip lines
   for i=1:size(lns,1)
     ts=[intersectlns(lns[i,:],border[k,:])[1] for k=1:size(border,1)]
-    say("*ts*")
-    say(ts)
+    #say("*ts*")
+    #say(ts)
     negs=ts[ts.<0]
     if length(negs)>0
       lns[i,5]=maximum([negs lns[i,5]])
@@ -64,8 +64,10 @@ function intersectlns(ln1,ln2)
      ln1[4] -ln2[4]]
   b=(ln2[1:2]-ln1[1:2])''
 
+  eps=0
   x=A\b
-  if x[2]<ln2[5]||x[2]>ln2[6]||x[1]<ln1[5]||x[1]>ln1[6]
+
+  if x[2]<=ln2[5]+eps||x[2]>=ln2[6]-eps||x[1]<=ln1[5]+eps||x[1]>=ln1[6]-eps
     return [NaN,NaN]
   else
     return x
@@ -99,55 +101,94 @@ function voron(sites)
 
   # process points
   for i=2:min(M,size(sites,1))
+    say("i=$i")
+
     # find nearest pt
     diff=broadcast(-,sites[1:i-1,:],sites[i,:])
     dist=sum(diff.*diff,2)
     ind=indmin(dist)
-    say("i=$i")
+
     # get first line
     ln=getline(sites[i,:],sites[ind,:],i,ind)
-    say("lns")
-    say(lns)
-    ts=[intersectlns(ln,lns[k,:])[1] for k=1:size(lns,1)]
-    sortts=sort(ts)
+    say("$(size(lns,1)) lines to test")
+    #say(lns)
+    ts0=[intersectlns(ln,lns[k,:]) for k=1:size(lns,1)]
+    ts=[ts0[k][1] for k=1:size(lns,1)]
+    #sortts=sort(ts)
     negs=ts[ts.<0]
     if length(negs)>0
       ln[5]=max(ln[5],maximum(negs))
-      say("*5*")
-      say(ln[5])
     end
     pos=ts[ts.>0]
     if length(pos)>0
       ln[6]=min(ln[6],minimum(pos))
-      say("*6*")
-      say(ln[6])
     end
-
-    say(ts)
     lns=[lns;ln]
-    say()
-    for j=size(lns,1):-1:1
+
+    # travel for new circle
+    t=1
+    travel=[ind]
+    travelstart=[]
+
+    if ln[5]!=-Inf
+      travelstart=[5]
+    elseif ln[6]!=Inf
+      travelstart=[6]
+    else
+      travelstart=[0]
+    end
+
+    # find next intersecting line
+    currentline=size(lns,1)
+    currentpoint=ind
+    if travelstart[t]!=0&&length(ts)>0
+      nextline=find(ts.==ln[travelstart[t]])
+      if length(nextline)!=1
+        say("************nextline: $nextline*********************")
+      end
+      nextline=nextline[1]
+      say("currentline: $currentline, nextline: $nextline")
+      nextpoint=Int64(lns[nextline,7]==currentpoint?lns[nextline,8]:lns[nextline,7])
+      say("currentpoint: $currentpoint, nextpoint: $nextpoint")
+      #pts[nextpoint,:]
+
+      # draw newline
+      newln=getline(sites[i,:],sites[nextpoint,:],i,nextpoint)
+      ts=[intersectlns(newln,lns[k,:])[1] for k=1:size(lns,1)]
+      # disable current line and next line
+      ts[currentline]=NaN
+      ts[nextline]=NaN
+      tnextln=intersectlns(newln,lns[nextline,:])[1]
+      say(tnextln)
+
+      #compute direction
+      mid2currentp=sites[currentpoint,1:2][:]-newln[1:2][:]
+      sum(mid2currentp.*newln[3:4])>0?newln[6]=tnextln:newln[5]=tnextln
+
+
+      lns=[lns;newln]
+
+      # trucate nextline
+      b=ts0[nextline][2]#intersectlns(lns[currentline,:],lns[nextline,:])
+      mid2p=sites[i,1:2]-lns[nextline,1:2]
+      sum(mid2p.*lns[nextline,3:4])>0?lns[nextline,6]=b:lns[nextline,5]=b
+      #b>0?lns[nextline,6]=b:lns[nextline,5]=b
+
+
+
+
+      #say(b)
 
     end
 
-    #say(ln)
+    say()
+    say("begin travel, first stop: $(travel[t])")
 
-    # for j=i-1:-1:1
-    #   # add line
-    #   center=(sites[i,:]+sites[j,:])/2
-    #   dir=sites[j,:]-sites[i,:]
-    #   len=sqrt(dir*(dir'))[1]
-    #   #say(len)
-    #   dir=dir/len
-    #   dir=[-dir[2],dir[1]]
-    #   ln=[center[1] center[2] dir[1] dir[2] -1 1 i j]
-    #   ts=[intersectlns(ln,borderrect[k,:])[1] for k=1:size(borderrect,1)]
-    #   ln[5]=maximum(ts[ts.<0])
-    #   ln[6]=minimum(ts[ts.>0])
-    #   lns=[lns;ln]
-    #
-    #   #say(ts[ts.>0])
-    # end
+    say("ln[5]=$(ln[5]), ln[6]=$(ln[6])")
+
+    say()
+
+
   end
 
   lns
