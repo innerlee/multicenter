@@ -26,7 +26,3 @@ function drawcomp(comp)
   draw(img,compose(context(),comp))
   showpic()
 end
-
-function points(pts)
-  compose(context(),circle(pts[:,1],pts[:,2],[.7mm]),fill(["black"]), stroke(["white"]))
-end
