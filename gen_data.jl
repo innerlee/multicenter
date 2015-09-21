@@ -68,5 +68,5 @@ end
 ### tests
 #pts=GenerateBall(show=true,num=100,r=1,center=[2, 5])
 
-pts,labs=GenerateTwoClasses(show=true)
+#pts,labs=GenerateTwoClasses(show=false)
 println("hi")
