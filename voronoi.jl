@@ -125,6 +125,9 @@ function voron(sites)
   p=sortperm(sites[:,1])
   sites=[sites[p[i],j] for i=1:size(sites,1),j=1:size(sites,2)]
 
+  #####################
+  sites=sites[1:8,:]
+
   # init pts arrray and lns array
   pts=sites[1,:]
   # x,y vx,vy lbound,ubound pt1,pt2 vorpt1,vorpt2 isdeleted
@@ -269,11 +272,11 @@ say("(l)")
 say("+(l0)")
           lns[nextline,6]=c
           # vor point of next line and next line 2
+          say(nextline)
           say(lns[nextline,7:11])
           removevor=lns[nextline,10]
 say("+(l1)")
-          say(nextline)
-          say(lns[nextline,7:11])
+          #say(lns[nextline,7:11])
           lns[nextline,10]=size(vorpts,1)
         else
           lns[nextline,5]=c
@@ -303,22 +306,23 @@ say("+(n1)*******")
         say()
         say("nextline: $nextline, nextline2: $nextline2")
         # delete isolated lines
-        say(removevor)
-say("+(n2)")
-        say(lns[:,7:11])
-        if !isnan(removevor)
+        say("removevor=$removevor")
+        say(vorpts)
+say("+(n21)")
+        #say(lns[:,7:11])
+        if !isnan(removevor)&&vorpts[Int64(removevor),6]==0
           removevor=Int64(removevor)
           vorpts[removevor,6]=1
           removeln=Int64(setdiff(vorpts[removevor,3:5],[nextline nextline2])[1])
           lns[removeln,11]=1
-          say(removeln)
+          say("remove line: $removeln")
         end
         # say(vorpts)
         # say(lns[nextline,9:10])
         # say(lns[nextline2,9:10])
         # vpt=setdiff(lns[nextline,9:10],setdiff(lns[nextline,9:10],lns[nextline2,9:10]))[1]
         # say(vpt)
-say("+(n2)")
+say("+(n22)")
         # prepare for the next round
         currentline=size(lns,1)
         currentpoint=nextpoint
@@ -342,5 +346,5 @@ say("(r)")
 say("(s)")
 say(lns[:,7:11])
   lns[find(lns[:,11].==0),:]
-  lns
+  #lns
 end
