@@ -84,6 +84,15 @@ function getline(pt1,pt2,i=0,j=0)
   ln=[center[1] center[2] dir[1] dir[2] -Inf Inf i j]
 end
 
+#
+function intersectpt(ln1,ln2)
+  A=[ln1[3] -ln2[3]
+     ln1[4] -ln2[4]]
+  b=(ln2[1:2]-ln1[1:2])''
+  x1=(A\b)[1]
+  ln1[1:2]+x1*ln1[3:4]
+end
+
 # use outer vars:
 # borderrect
 # sites
@@ -97,7 +106,7 @@ function voron(sites)
 
   # init pts arrray and lns array
   pts=sites[1,:]
-  lns=Array(Float64,0,8)
+  lns=Array(Float64,0,9)
   # x,y ln1,ln2,ln3
   vorpts=Array(Float64,0,5)
 
@@ -111,7 +120,7 @@ say("(a)")
     ind=indmin(dist)
 say("(b)")
     # get first line
-    ln=getline(sites[i,:],sites[ind,:],i,ind)
+    ln=[getline(sites[i,:],sites[ind,:],i,ind) [0]]
     say("$(size(lns,1)) lines to test")
     ts0=[intersectlns(ln,lns[k,:])[1] for k=1:size(lns,1)]
     negs=ts0[ts0.<0]
@@ -125,6 +134,8 @@ say("(b)")
       ln[6]=min(ln[6],minimum(pos))
     end
     say("ln[5]=$(ln[5]),ln[6]=$(ln[6])")
+    say(size(lns))
+    say(size(ln))
     lns=[lns;ln]
 
     currentline0=size(lns,1)
@@ -161,10 +172,17 @@ say("(g)")
       nextpoint=Int64(lns[nextline,7]==currentpoint?lns[nextline,8]:lns[nextline,7])
 say("(h)")
       while t<MAX
+        # add to vorpts the intersection of current line and next line and new line
+say("+(h1)")
+        newvorpt=intersectpt(lns[currentline,:],lns[nextline,:])
+        say(newvorpt)
+        vorpts=[vorpts;[newvorpt[1] newvorpt[2] currentline nextline size(lns,1)+1]]
+say("+(h2)")
+        say(size(vorpts))
         say("[$t] currentline: $currentline, nextline: $nextline | currentpoint: $currentpoint, nextpoint: $nextpoint")
 say("(i)")
         # draw newline passing between nextpoint and i-th point
-        newline=getline(sites[i,:],sites[nextpoint,:],i,nextpoint)
+        newline=[getline(sites[i,:],sites[nextpoint,:],i,nextpoint) [0]]
         # determine direction of new line
         mid2p=sites[currentpoint,1:2][:]-newline[1:2][:]
         codir=sum(mid2p.*newline[3:4])>0
@@ -196,7 +214,7 @@ say("(k)")
 say("(l)")
         # trim nextline
         copycurrentline=zeros(1,size(lns,2))
-        copycurrentline[:]=[lns[currentline,1:4] [-Inf Inf 0 0]]
+        copycurrentline[:]=[lns[currentline,1:4] [-Inf Inf 0 0 0]]
         c=intersectlns(copycurrentline,lns[nextline,:])[2]
         say(c)
         mid2p=sites[i,1:2]-lns[nextline,1:2]
@@ -281,5 +299,5 @@ say()
 say("= lines: x0,y0, vx,vy, a,b =")
 say(borderrect)
 
-lns=voron(sites)
-drawvor(sites,lns[:,1:6],borderrect)
+vorlns=voron(sites)
+drawvor(sites,vorlns[:,1:6],borderrect)
