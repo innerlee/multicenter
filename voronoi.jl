@@ -2,7 +2,7 @@ say("voronoi now")
 
 #
 function composepoints(pts)
-  compose(context(),circle(pts[:,1],pts[:,2],[.7mm]),fill(["black"]), stroke(["white"]))
+  compose(context(),circle(pts[:,1],pts[:,2],[.7mm]),fill([colorant"black"]), stroke([colorant"white"]))
 end
 
 #
@@ -32,12 +32,12 @@ function drawvor(pts,lns,border)
   # preprocess them
   say()
   say("= drawvor =")
-
+  say(lns)
   # clip lines
   for i=1:size(lns,1)
     ts=[intersectlns(lns[i,:],border[k,:])[1] for k=1:size(border,1)]
-    #say("*ts*")
-    #say(ts)
+    say("*ts*")
+    say(ts)
     negs=ts[ts.<0]
     if length(negs)>0
       lns[i,5]=maximum([negs lns[i,5]])
@@ -47,7 +47,9 @@ function drawvor(pts,lns,border)
       lns[i,6]=max(lns[i,5],minimum([ts[ts.>0] lns[i,6]]))
     end
   end
-
+say()
+  # fileter outer lines
+  lns=lns[[isout(lns[k,:]) for k=1:size(lns,1)],:]
   # transforms
   lns=[border;lns]
   ratio=max(b_width,b_height)
@@ -56,6 +58,25 @@ function drawvor(pts,lns,border)
   say(size(lns))
 
   drawcomp(compose(context(),composepoints(pts),composelines(lns)))
+end
+
+#
+function isout(ln)
+  #return true
+  #say()
+  #say("= isout =")
+  #say(ln[5:6])
+  twopts=[(ln[1:2]+ln[5]*ln[3:4])'; (ln[1:2]+ln[6]*ln[3:4])']
+  #say(twopts)
+  ep=1e-5
+  for k=1:size(twopts,1)
+    x=twopts[k,1]
+    y=twopts[k,2]
+    if x<b_left-ep||x>b_right+ep||y<b_bot-ep||y>b_top+ep
+      return false
+    end
+  end
+  return true
 end
 
 #
@@ -106,9 +127,10 @@ function voron(sites)
 
   # init pts arrray and lns array
   pts=sites[1,:]
-  lns=Array(Float64,0,9)
-  # x,y ln1,ln2,ln3
-  vorpts=Array(Float64,0,5)
+  # x,y vx,vy lbound,ubound pt1,pt2 vorpt1,vorpt2 isdeleted
+  lns=Array(Float64,0,11)
+  # x,y ln1,ln2,ln3 isdeleted
+  vorpts=Array(Float64,0,6)
 
   # process points
   for i=2:min(M,size(sites,1))
@@ -118,11 +140,12 @@ say("(a)")
     diff=broadcast(-,sites[1:i-1,:],sites[i,:])
     dist=sum(diff.*diff,2)
     ind=indmin(dist)
+    say(ind)
 say("(b)")
     # get first line
-    ln=[getline(sites[i,:],sites[ind,:],i,ind) [0]]
+    ln=[getline(sites[i,:],sites[ind,:],i,ind) [NaN NaN 0]]
     say("$(size(lns,1)) lines to test")
-    ts0=[intersectlns(ln,lns[k,:])[1] for k=1:size(lns,1)]
+    ts0=[lns[k,11]==0?intersectlns(ln,lns[k,:])[1]:NaN for k=1:size(lns,1)]
     negs=ts0[ts0.<0]
     if length(negs)>0
       say("will left")
@@ -139,10 +162,10 @@ say("(b)")
     lns=[lns;ln]
 
     currentline0=size(lns,1)
-
+    say("currentline:$currentline0")
 say("(c)")
     # travel for new circle
-    MAX=10
+    MAX=10000
     travel=[ind]
     t=1
     travelstart=[]
@@ -153,7 +176,7 @@ say("(d)")
       # no existing lines, nothing to do
       length(ts0)==0?break:Nothing
 say("(e)")
-      say("ln[z]=$(ln[z])")
+      #say("ln[z]=$(ln[z])")
       if ln[z]!=-Inf&&ln[z]!=Inf
         travelstart=[z]
       else
@@ -164,32 +187,39 @@ say("(f)")
       currentpoint=ind
 say("(g)")
       # find next intersecting line
+      say(travelstart)
+      say(t)
       nextline=find(ts0.==ln[travelstart[t]])
       if length(nextline)!=1
         say("************nextline: $nextline*********************")
       end
       nextline=nextline[1]
       nextpoint=Int64(lns[nextline,7]==currentpoint?lns[nextline,8]:lns[nextline,7])
+say("+(g1)")
+      # vor pt of currentline
+      z==5?lns[currentline,9]=size(vorpts,1)+1:lns[currentline,10]=size(vorpts,1)+1
 say("(h)")
       while t<MAX
         # add to vorpts the intersection of current line and next line and new line
 say("+(h1)")
         newvorpt=intersectpt(lns[currentline,:],lns[nextline,:])
         say(newvorpt)
-        vorpts=[vorpts;[newvorpt[1] newvorpt[2] currentline nextline size(lns,1)+1]]
+        vorpts=[vorpts;[newvorpt[1] newvorpt[2] currentline nextline size(lns,1)+1 0]]
 say("+(h2)")
         say(size(vorpts))
         say("[$t] currentline: $currentline, nextline: $nextline | currentpoint: $currentpoint, nextpoint: $nextpoint")
 say("(i)")
         # draw newline passing between nextpoint and i-th point
-        newline=[getline(sites[i,:],sites[nextpoint,:],i,nextpoint) [0]]
+        newline=[getline(sites[i,:],sites[nextpoint,:],i,nextpoint) [NaN NaN 0]]
         # determine direction of new line
         mid2p=sites[currentpoint,1:2][:]-newline[1:2][:]
         codir=sum(mid2p.*newline[3:4])>0
+        say("codir:$codir")
 say("(j)")
         # filter edges around next point
-        filt=[lns[k,7]==nextpoint||lns[k,8]==nextpoint for k=1:size(lns,1)]
+        filt=[lns[k,11]==0&&(lns[k,7]==nextpoint||lns[k,8]==nextpoint) for k=1:size(lns,1)]
         ts=[filt[k]?intersectlns(newline,lns[k,:])[1]:NaN for k=1:size(lns,1)]
+        say(ts)
 say("(k)")
         # trim new line
         a=ts[nextline]
@@ -197,29 +227,63 @@ say("(k)")
         say("a=$a")
         if codir
           newline[6]=a
+          # vor pt of new line
+          newline[10]=size(vorpts,1)
           filterts=[ts[k]<a?ts[k]:NaN for k=1:length(ts)]
           if length(filterts)>0
             b=maximum(filterts)
-            b!=Inf&&b!=-Inf&&b!=NaN?newline[5]=b:Nothing
+            if b!=Inf&&b!=-Inf&&!isnan(b)
+              newline[5]=b
+              # vor pt 2 of new line
+              newline[9]=size(vorpts,1)+1
+            end
           end
         else
+say("+(k0)")
           newline[5]=a
+          # vor pt of new line
+          newline[9]=size(vorpts,1)
+          say(vorpts)
           filterts=[ts[k]>a?ts[k]:NaN for k=1:length(ts)]
+          say(filterts)
           if length(filterts)>0
             b=minimum(filterts)
-            b!=Inf&&b!=-Inf&&b!=NaN?newline[6]=b:Nothing
+            if b!=Inf&&b!=-Inf&&!isnan(b)
+              newline[6]=b
+              # vor pt 2 of new line
+              newline[10]=size(vorpts,1)+1
+            end
           end
         end
+say("+(k1)")
+        say(newline[7:11])
         lns=[lns;newline]
 say("(l)")
         # trim nextline
         copycurrentline=zeros(1,size(lns,2))
-        copycurrentline[:]=[lns[currentline,1:4] [-Inf Inf 0 0 0]]
+        copycurrentline[:]=[lns[currentline,1:4] [-Inf Inf 0 0 0 0 0]]
         c=intersectlns(copycurrentline,lns[nextline,:])[2]
         say(c)
         mid2p=sites[i,1:2]-lns[nextline,1:2]
-        #say(mid2p)
-        sum(mid2p.*lns[nextline,3:4])>0?lns[nextline,6]=c:lns[nextline,5]=c
+        if sum(mid2p.*lns[nextline,3:4])>0
+say("+(l0)")
+          lns[nextline,6]=c
+          # vor point of next line and next line 2
+          say(lns[nextline,7:11])
+          removevor=lns[nextline,10]
+say("+(l1)")
+          say(nextline)
+          say(lns[nextline,7:11])
+          lns[nextline,10]=size(vorpts,1)
+        else
+          lns[nextline,5]=c
+          # vor pt of next line
+          removevor=lns[nextline,9]
+say("+(l2)")
+          say(nextline)
+          say(lns[nextline,7:11])
+          lns[nextline,9]=size(vorpts,1)
+        end
 say("(m)")
         # whether ends
         isnan(b)||b==Inf||b==-Inf?break:Nothing
@@ -233,9 +297,28 @@ say("(n)")
         say(nextline2)
         say(filterts)
         say(b)
-say("+(n1)")
+say("+(n1)*******")
+        say()
+        say(lns[:,7:11])
+        say()
+        say("nextline: $nextline, nextline2: $nextline2")
         # delete isolated lines
-
+        say(removevor)
+say("+(n2)")
+        say(lns[:,7:11])
+        if !isnan(removevor)
+          removevor=Int64(removevor)
+          vorpts[removevor,6]=1
+          removeln=Int64(setdiff(vorpts[removevor,3:5],[nextline nextline2])[1])
+          lns[removeln,11]=1
+          say(removeln)
+        end
+        # say(vorpts)
+        # say(lns[nextline,9:10])
+        # say(lns[nextline2,9:10])
+        # vpt=setdiff(lns[nextline,9:10],setdiff(lns[nextline,9:10],lns[nextline2,9:10]))[1]
+        # say(vpt)
+say("+(n2)")
         # prepare for the next round
         currentline=size(lns,1)
         currentpoint=nextpoint
@@ -249,7 +332,7 @@ say("(o)")
         #
         # say("ln[5]=$(ln[5]), ln[6]=$(ln[6])")
 
-        t+=1
+        #t+=1
 say("(p)")
       end
 say("(q)")
@@ -257,47 +340,7 @@ say("(q)")
 say("(r)")
   end
 say("(s)")
+say(lns[:,7:11])
+  lns[find(lns[:,11].==0),:]
   lns
 end
-
-N=4
-sites=rand(N,2)
-say()
-say("= sites =")
-say(size(sites))
-
-# get bounds
-say()
-say("= bounds =")
-top=maximum(sites[:,2])
-bottom=minimum(sites[:,2])
-left=minimum(sites[:,1])
-right=maximum(sites[:,1])
-say("top:$top bottom:$bottom left:$left right:$right")
-
-width=right-left
-height=top-bottom
-
-margin=0.1
-b_top=top+margin*height
-b_bot=bottom-margin*height
-b_left=left-margin*width
-b_right=right+margin*width
-b_width=width*(1+2*margin)
-b_height=height*(1+2*margin)
-
-# lines: (x0,y0, vx,vy, a,b)
-# add borders
-borderrect=[
-b_left b_bot 1 0 0 b_width
-b_right b_bot 0 1 0 b_height
-b_right b_top -1 0 0 b_width
-b_left b_top 0 -1 0 b_height
-]
-
-say()
-say("= lines: x0,y0, vx,vy, a,b =")
-say(borderrect)
-
-vorlns=voron(sites)
-drawvor(sites,vorlns[:,1:6],borderrect)
