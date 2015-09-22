@@ -98,6 +98,8 @@ function voron(sites)
   # init pts arrray and lns array
   pts=sites[1,:]
   lns=Array(Float64,0,8)
+  # x,y ln1,ln2,ln3
+  vorpts=Array(Float64,0,5)
 
   # process points
   for i=2:min(M,size(sites,1))
@@ -111,18 +113,22 @@ say("(b)")
     # get first line
     ln=getline(sites[i,:],sites[ind,:],i,ind)
     say("$(size(lns,1)) lines to test")
-    ts=[intersectlns(ln,lns[k,:])[1] for k=1:size(lns,1)]
-    negs=ts[ts.<0]
+    ts0=[intersectlns(ln,lns[k,:])[1] for k=1:size(lns,1)]
+    negs=ts0[ts0.<0]
     if length(negs)>0
-      say("in here")
+      say("will left")
       ln[5]=max(ln[5],maximum(negs))
     end
-    pos=ts[ts.>0]
+    pos=ts0[ts0.>0]
     if length(pos)>0
-      say("or here")
+      say("will right")
       ln[6]=min(ln[6],minimum(pos))
     end
+    say("ln[5]=$(ln[5]),ln[6]=$(ln[6])")
     lns=[lns;ln]
+
+    currentline0=size(lns,1)
+
 say("(c)")
     # travel for new circle
     MAX=10
@@ -134,19 +140,20 @@ say("(d)")
     for z=5:6
       say("z=$z")
       # no existing lines, nothing to do
-      length(ts)==0?break:Nothing
+      length(ts0)==0?break:Nothing
 say("(e)")
+      say("ln[z]=$(ln[z])")
       if ln[z]!=-Inf&&ln[z]!=Inf
         travelstart=[z]
       else
         continue
       end
 say("(f)")
-      currentline=size(lns,1)
+      currentline=currentline0
       currentpoint=ind
 say("(g)")
       # find next intersecting line
-      nextline=find(ts.==ln[travelstart[t]])
+      nextline=find(ts0.==ln[travelstart[t]])
       if length(nextline)!=1
         say("************nextline: $nextline*********************")
       end
@@ -191,19 +198,15 @@ say("(l)")
         copycurrentline=zeros(1,size(lns,2))
         copycurrentline[:]=[lns[currentline,1:4] [-Inf Inf 0 0]]
         c=intersectlns(copycurrentline,lns[nextline,:])[2]
-        say(intersectlns(lns[currentline,:],lns[nextline,:]))
         say(c)
         mid2p=sites[i,1:2]-lns[nextline,1:2]
-        say(mid2p)
+        #say(mid2p)
         sum(mid2p.*lns[nextline,3:4])>0?lns[nextline,6]=c:lns[nextline,5]=c
 say("(m)")
         # whether ends
         isnan(b)||b==Inf||b==-Inf?break:Nothing
 say("(n)")
         # now continues,
-        # prepare for the next round
-        currentline=size(lns,1)
-        currentpoint=nextpoint
         # get the new next line which new line intersects with
         nextline2=find(filterts.==b)
         if length(nextline2)>1
@@ -212,8 +215,13 @@ say("(n)")
         say(nextline2)
         say(filterts)
         say(b)
+say("+(n1)")
+        # delete isolated lines
+
+        # prepare for the next round
+        currentline=size(lns,1)
+        currentpoint=nextpoint
         nextline=nextline2[1]
-        # get next point
         nextpoint=Int64(lns[nextline,7]==currentpoint?lns[nextline,8]:lns[nextline,7])
 say("(o)")
 
@@ -223,7 +231,6 @@ say("(o)")
         #
         # say("ln[5]=$(ln[5]), ln[6]=$(ln[6])")
 
-        say()
         t+=1
 say("(p)")
       end
@@ -235,7 +242,7 @@ say("(s)")
   lns
 end
 
-N=3
+N=4
 sites=rand(N,2)
 say()
 say("= sites =")
