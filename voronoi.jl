@@ -90,7 +90,7 @@ end
 function voron(sites)
   say()
   say("== voron() ==")
-  M=3
+  M=size(sites,1)
   # sort along x axis
   p=sortperm(sites[:,1])
   sites=[sites[p[i],j] for i=1:size(sites,1),j=1:size(sites,2)]
@@ -101,96 +101,137 @@ function voron(sites)
 
   # process points
   for i=2:min(M,size(sites,1))
-    say("i=$i")
-
+    say("--- new point adds in: i=$i")
+say("(a)")
     # find nearest pt
     diff=broadcast(-,sites[1:i-1,:],sites[i,:])
     dist=sum(diff.*diff,2)
     ind=indmin(dist)
-
+say("(b)")
     # get first line
     ln=getline(sites[i,:],sites[ind,:],i,ind)
     say("$(size(lns,1)) lines to test")
-    #say(lns)
-    ts0=[intersectlns(ln,lns[k,:]) for k=1:size(lns,1)]
-    ts=[ts0[k][1] for k=1:size(lns,1)]
-    #sortts=sort(ts)
+    ts=[intersectlns(ln,lns[k,:])[1] for k=1:size(lns,1)]
     negs=ts[ts.<0]
     if length(negs)>0
+      say("in here")
       ln[5]=max(ln[5],maximum(negs))
     end
     pos=ts[ts.>0]
     if length(pos)>0
+      say("or here")
       ln[6]=min(ln[6],minimum(pos))
     end
     lns=[lns;ln]
-
+say("(c)")
     # travel for new circle
-    t=1
+    MAX=10
     travel=[ind]
+    t=1
     travelstart=[]
-
-    if ln[5]!=-Inf
-      travelstart=[5]
-    elseif ln[6]!=Inf
-      travelstart=[6]
-    else
-      travelstart=[0]
-    end
-
-    # find next intersecting line
-    currentline=size(lns,1)
-    currentpoint=ind
-    if travelstart[t]!=0&&length(ts)>0
+say("(d)")
+    # go left and go right until unbound
+    for z=5:6
+      say("z=$z")
+      # no existing lines, nothing to do
+      length(ts)==0?break:Nothing
+say("(e)")
+      if ln[z]!=-Inf&&ln[z]!=Inf
+        travelstart=[z]
+      else
+        continue
+      end
+say("(f)")
+      currentline=size(lns,1)
+      currentpoint=ind
+say("(g)")
+      # find next intersecting line
       nextline=find(ts.==ln[travelstart[t]])
       if length(nextline)!=1
         say("************nextline: $nextline*********************")
       end
       nextline=nextline[1]
-      say("currentline: $currentline, nextline: $nextline")
       nextpoint=Int64(lns[nextline,7]==currentpoint?lns[nextline,8]:lns[nextline,7])
-      say("currentpoint: $currentpoint, nextpoint: $nextpoint")
-      #pts[nextpoint,:]
+say("(h)")
+      while t<MAX
+        say("[$t] currentline: $currentline, nextline: $nextline | currentpoint: $currentpoint, nextpoint: $nextpoint")
+say("(i)")
+        # draw newline passing between nextpoint and i-th point
+        newline=getline(sites[i,:],sites[nextpoint,:],i,nextpoint)
+        # determine direction of new line
+        mid2p=sites[currentpoint,1:2][:]-newline[1:2][:]
+        codir=sum(mid2p.*newline[3:4])>0
+say("(j)")
+        # filter edges around next point
+        filt=[lns[k,7]==nextpoint||lns[k,8]==nextpoint for k=1:size(lns,1)]
+        ts=[filt[k]?intersectlns(newline,lns[k,:])[1]:NaN for k=1:size(lns,1)]
+say("(k)")
+        # trim new line
+        a=ts[nextline]
+        b=NaN
+        say("a=$a")
+        if codir
+          newline[6]=a
+          filterts=[ts[k]<a?ts[k]:NaN for k=1:length(ts)]
+          if length(filterts)>0
+            b=maximum(filterts)
+            b!=Inf&&b!=-Inf&&b!=NaN?newline[5]=b:Nothing
+          end
+        else
+          newline[5]=a
+          filterts=[ts[k]>a?ts[k]:NaN for k=1:length(ts)]
+          if length(filterts)>0
+            b=minimum(filterts)
+            b!=Inf&&b!=-Inf&&b!=NaN?newline[6]=b:Nothing
+          end
+        end
+        lns=[lns;newline]
+say("(l)")
+        # trim nextline
+        copycurrentline=zeros(1,size(lns,2))
+        copycurrentline[:]=[lns[currentline,1:4] [-Inf Inf 0 0]]
+        c=intersectlns(copycurrentline,lns[nextline,:])[2]
+        say(intersectlns(lns[currentline,:],lns[nextline,:]))
+        say(c)
+        mid2p=sites[i,1:2]-lns[nextline,1:2]
+        say(mid2p)
+        sum(mid2p.*lns[nextline,3:4])>0?lns[nextline,6]=c:lns[nextline,5]=c
+say("(m)")
+        # whether ends
+        isnan(b)||b==Inf||b==-Inf?break:Nothing
+say("(n)")
+        # now continues,
+        # prepare for the next round
+        currentline=size(lns,1)
+        currentpoint=nextpoint
+        # get the new next line which new line intersects with
+        nextline2=find(filterts.==b)
+        if length(nextline2)>1
+          say("***********HERE************")
+        end
+        say(nextline2)
+        say(filterts)
+        say(b)
+        nextline=nextline2[1]
+        # get next point
+        nextpoint=Int64(lns[nextline,7]==currentpoint?lns[nextline,8]:lns[nextline,7])
+say("(o)")
 
-      # draw newline
-      newln=getline(sites[i,:],sites[nextpoint,:],i,nextpoint)
-      ts=[intersectlns(newln,lns[k,:])[1] for k=1:size(lns,1)]
-      # disable current line and next line
-      ts[currentline]=NaN
-      ts[nextline]=NaN
-      tnextln=intersectlns(newln,lns[nextline,:])[1]
-      say(tnextln)
 
-      #compute direction
-      mid2currentp=sites[currentpoint,1:2][:]-newln[1:2][:]
-      sum(mid2currentp.*newln[3:4])>0?newln[6]=tnextln:newln[5]=tnextln
+        # say()
+        # say("begin travel, first stop: $(travel[t])")
+        #
+        # say("ln[5]=$(ln[5]), ln[6]=$(ln[6])")
 
-
-      lns=[lns;newln]
-
-      # trucate nextline
-      b=ts0[nextline][2]#intersectlns(lns[currentline,:],lns[nextline,:])
-      mid2p=sites[i,1:2]-lns[nextline,1:2]
-      sum(mid2p.*lns[nextline,3:4])>0?lns[nextline,6]=b:lns[nextline,5]=b
-      #b>0?lns[nextline,6]=b:lns[nextline,5]=b
-
-
-
-
-      #say(b)
-
+        say()
+        t+=1
+say("(p)")
+      end
+say("(q)")
     end
-
-    say()
-    say("begin travel, first stop: $(travel[t])")
-
-    say("ln[5]=$(ln[5]), ln[6]=$(ln[6])")
-
-    say()
-
-
+say("(r)")
   end
-
+say("(s)")
   lns
 end
 
