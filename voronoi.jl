@@ -85,6 +85,11 @@ function intersectlns(ln1,ln2)
      ln1[4] -ln2[4]]
   b=(ln2[1:2]-ln1[1:2])''
 
+  #say(A)
+  #(det(A))
+  if det(A)==0
+    return [NaN,NaN]
+  end
   eps=0
   x=A\b
 
@@ -93,6 +98,18 @@ function intersectlns(ln1,ln2)
   else
     return x
   end
+end
+
+#
+function detachvor(vpts,ptno,lnno)
+  if isnan(ptno)
+    return
+  end
+  ptno=Int64(ptno)
+  lnno=Int64(lnno)
+  vpts[ptno,3]==lnno?vpts[ptno,3]=NaN:
+  vpts[ptno,4]==lnno?vpts[ptno,4]=NaN:
+  vpts[ptno,5]==lnno?vpts[ptno,5]=NaN:Nothing
 end
 
 #
@@ -126,7 +143,7 @@ function voron(sites)
   sites=[sites[p[i],j] for i=1:size(sites,1),j=1:size(sites,2)]
 
   #####################
-  sites=sites[1:8,:]
+  sites=sites[1:min(size(sites,1),NN),:]
 
   # init pts arrray and lns array
   pts=sites[1,:]
@@ -137,6 +154,7 @@ function voron(sites)
 
   # process points
   for i=2:min(M,size(sites,1))
+    debug=(i>5)
     say("--- new point adds in: i=$i")
 say("(a)")
     # find nearest pt
@@ -150,13 +168,17 @@ say("(b)")
     say("$(size(lns,1)) lines to test")
     ts0=[lns[k,11]==0?intersectlns(ln,lns[k,:])[1]:NaN for k=1:size(lns,1)]
     negs=ts0[ts0.<0]
+    say(ts0)
+    leftright=0
     if length(negs)>0
       say("will left")
+      leftright+=1
       ln[5]=max(ln[5],maximum(negs))
     end
     pos=ts0[ts0.>0]
     if length(pos)>0
       say("will right")
+      leftright+=1
       ln[6]=min(ln[6],minimum(pos))
     end
     say("ln[5]=$(ln[5]),ln[6]=$(ln[6])")
@@ -206,8 +228,8 @@ say("(h)")
         # add to vorpts the intersection of current line and next line and new line
 say("+(h1)")
         newvorpt=intersectpt(lns[currentline,:],lns[nextline,:])
-        say(newvorpt)
         vorpts=[vorpts;[newvorpt[1] newvorpt[2] currentline nextline size(lns,1)+1 0]]
+        say(vorpts[end,3:end])
 say("+(h2)")
         say(size(vorpts))
         say("[$t] currentline: $currentline, nextline: $nextline | currentpoint: $currentpoint, nextpoint: $nextpoint")
@@ -227,24 +249,24 @@ say("(k)")
         # trim new line
         a=ts[nextline]
         b=NaN
-        say("a=$a")
+        #say("a=$a")
         if codir
           newline[6]=a
-          # vor pt of new line
+          # vor pt of new line: attach new
           newline[10]=size(vorpts,1)
           filterts=[ts[k]<a?ts[k]:NaN for k=1:length(ts)]
           if length(filterts)>0
             b=maximum(filterts)
             if b!=Inf&&b!=-Inf&&!isnan(b)
               newline[5]=b
-              # vor pt 2 of new line
+              # vor pt 2 of new line: attach new
               newline[9]=size(vorpts,1)+1
             end
           end
         else
 say("+(k0)")
           newline[5]=a
-          # vor pt of new line
+          # vor pt of new line: attach new
           newline[9]=size(vorpts,1)
           say(vorpts)
           filterts=[ts[k]>a?ts[k]:NaN for k=1:length(ts)]
@@ -253,7 +275,7 @@ say("+(k0)")
             b=minimum(filterts)
             if b!=Inf&&b!=-Inf&&!isnan(b)
               newline[6]=b
-              # vor pt 2 of new line
+              # vor pt 2 of new line: attach new
               newline[10]=size(vorpts,1)+1
             end
           end
@@ -274,17 +296,22 @@ say("+(l0)")
           # vor point of next line and next line 2
           say(nextline)
           say(lns[nextline,7:11])
-          removevor=lns[nextline,10]
+          # detach old vorpt
+          detachvor(vorpts,lns[nextline,10],nextline)
+          #removevor=lns[nextline,10]
 say("+(l1)")
           #say(lns[nextline,7:11])
+          # attach new vorpt
           lns[nextline,10]=size(vorpts,1)
         else
           lns[nextline,5]=c
-          # vor pt of next line
-          removevor=lns[nextline,9]
+          # detach old vorpt
+          detachvor(vorpts,lns[nextline,9],nextline)
+          #removevor=lns[nextline,9]
 say("+(l2)")
           say(nextline)
           say(lns[nextline,7:11])
+          # attach new vorpt
           lns[nextline,9]=size(vorpts,1)
         end
 say("(m)")
@@ -292,7 +319,34 @@ say("(m)")
         if isnan(b)||b==Inf||b==-Inf
 
           # TODO: CLEAR OUT ALL DISCONECTED VOR PTS AND LINES
-
+          # check wheter start cleaning
+          flag=z==6||(z==5&&leftright==1)
+          # clean up isolated lines and vor pts
+          while flag
+            flag=false
+            say("==^^")
+            say(vorpts)
+            for k=size(vorpts,1):-1:1
+              say("^")
+              sig=sum(isnan(vorpts[k,3:5]))
+              if sig==1||sig==2
+                say("here^^^^^^^^^^^^^^^^^^")
+                flag=true
+                vorpts[k,6]=1
+                for l=3:5
+                  if !isnan(vorpts[k,l])
+                    # remove line
+                    lns[Int64(vorpts[k,l]),11]=1
+                    say("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+                    say("remove line $vorpts[k,l]")
+                    # detach this line from vor pt
+                    vorpts[k,l]=NaN
+                  end
+                end
+              end
+            end
+          end
+          say("end left or right $z")
           break
         end
 say("(n)")
@@ -304,7 +358,7 @@ say("(n)")
         end
         say(nextline2)
         # TODO: NEXT LINE 2 SHOULD ALSO HAVE DISCONECTED VOR PTS
-        
+
         say(filterts)
         say(b)
 say("+(n1)*******")
@@ -312,18 +366,18 @@ say("+(n1)*******")
         say(lns[:,7:11])
         say()
         say("nextline: $nextline, nextline2: $nextline2")
-        # delete isolated lines
-        say("removevor=$removevor")
-        say(vorpts)
-say("+(n21)")
-        #say(lns[:,7:11])
-        if !isnan(removevor)&&vorpts[Int64(removevor),6]==0
-          removevor=Int64(removevor)
-          vorpts[removevor,6]=1
-          removeln=Int64(setdiff(vorpts[removevor,3:5],[nextline nextline2])[1])
-          lns[removeln,11]=1
-          say("remove line: $removeln")
-        end
+#         # delete isolated lines
+#         say("removevor=$removevor")
+#         say(vorpts)
+# say("+(n21)")
+#         #say(lns[:,7:11])
+#         if !isnan(removevor)&&vorpts[Int64(removevor),6]==0
+#           removevor=Int64(removevor)
+#           vorpts[removevor,6]=1
+#           removeln=Int64(setdiff(vorpts[removevor,3:5],[nextline nextline2])[1])
+#           lns[removeln,11]=1
+#           say("remove line: $removeln")
+#         end
         # say(vorpts)
         # say(lns[nextline,9:10])
         # say(lns[nextline2,9:10])

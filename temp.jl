@@ -1,5 +1,5 @@
 
-N=8
+
 sites=rand(N,2)
 say()
 say("= sites =")
@@ -17,7 +17,7 @@ say("top:$top bottom:$bottom left:$left right:$right")
 width=right-left
 height=top-bottom
 
-margin=.3
+
 b_top=top+margin*height
 b_bot=bottom-margin*height
 b_left=left-margin*width
