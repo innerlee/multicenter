@@ -1,6 +1,12 @@
 
 
 sites=rand(N,2)
+# sites=[
+# -1 -1
+# 1 1
+# 1 -1
+# -1 1
+# ]
 say()
 say("= sites =")
 say(size(sites))

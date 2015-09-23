@@ -36,8 +36,8 @@ function drawvor(pts,lns,border)
   # clip lines
   for i=1:size(lns,1)
     ts=[intersectlns(lns[i,:],border[k,:])[1] for k=1:size(border,1)]
-    say("*ts*")
-    say(ts)
+    #say("*ts*")
+    #say(ts)
     negs=ts[ts.<0]
     if length(negs)>0
       lns[i,5]=maximum([negs lns[i,5]])
@@ -53,7 +53,11 @@ say()
   # transforms
   lns=[border;lns]
   ratio=max(b_width,b_height)
-  pts=broadcast(/,broadcast(-,pts,[b_left b_bot]),[ratio ratio])
+  #say(ratio)
+  #say(broadcast(-,pts,[b_left b_bot])/6)
+  pts=broadcast(-,pts,[b_left b_bot])/ratio
+  #pts=broadcast(/,broadcast(-,pts,[b_left b_bot]),[ratio ratio])
+#say("...")
   lns=broadcast(/,broadcast(-,lns,[b_left b_bot 0 0 0 0]),[ratio ratio 1 1 ratio ratio])
   say(size(lns))
 
@@ -141,9 +145,14 @@ function voron(sites)
   # sort along x axis
   p=sortperm(sites[:,1])
   sites=[sites[p[i],j] for i=1:size(sites,1),j=1:size(sites,2)]
+  # perturb sites
+  ep=1e-12
+  println(size(sites))
+  sites=sites[:,1:2]+ep*rand(M,2)
+  #sites[:,1:2]=aftersalt
 
   #####################
-  sites=sites[1:min(size(sites,1),NN),:]
+  sites=sites[1:min(M,NN),:]
 
   # init pts arrray and lns array
   pts=sites[1,:]
@@ -327,20 +336,24 @@ say("(m)")
             say("==^^")
             say(vorpts)
             for k=size(vorpts,1):-1:1
-              say("^")
+              say("^$k")
               sig=sum(isnan(vorpts[k,3:5]))
               if sig==1||sig==2
-                say("here^^^^^^^^^^^^^^^^^^")
                 flag=true
+                say("here, vor pt $k has $(3-sig) lines to remove ^^^^^")
+                say("vorpts $k before")
+                say(vorpts[k,3:end])
                 vorpts[k,6]=1
                 for l=3:5
                   if !isnan(vorpts[k,l])
                     # remove line
-                    lns[Int64(vorpts[k,l]),11]=1
-                    say("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-                    say("remove line $vorpts[k,l]")
+                    lno=Int64(vorpts[k,l])
+                    lns[lno,11]=1
+                    say("xxxxxxxxxxxxxxxxxxxxx remove line $vorpts[k,l]")
                     # detach this line from vor pt
-                    vorpts[k,l]=NaN
+                    detachvor(vorpts,lns[lno,9],lno)
+                    detachvor(vorpts,lns[lno,10],lno)
+                    #vorpts[k,l]=NaN
                   end
                 end
               end
@@ -357,11 +370,9 @@ say("(n)")
           say("***********HERE************")
         end
         say(nextline2)
-        # TODO: NEXT LINE 2 SHOULD ALSO HAVE DISCONECTED VOR PTS
-
         say(filterts)
         say(b)
-say("+(n1)*******")
+say("+(n1)")
         say()
         say(lns[:,7:11])
         say()

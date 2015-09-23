@@ -1,10 +1,10 @@
 
-MM=185
-#MM+=1
+#MM=185
+MM=1
 margin=1
-N=10
-NN=10
-debug=true
+N=100
+NN=1000
+debug=false
 # 161,6
 # 164, 80
 # 185,10
