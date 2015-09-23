@@ -289,7 +289,12 @@ say("+(l2)")
         end
 say("(m)")
         # whether ends
-        isnan(b)||b==Inf||b==-Inf?break:Nothing
+        if isnan(b)||b==Inf||b==-Inf
+
+          # TODO: CLEAR OUT ALL DISCONECTED VOR PTS AND LINES
+
+          break
+        end
 say("(n)")
         # now continues,
         # get the new next line which new line intersects with
@@ -298,6 +303,8 @@ say("(n)")
           say("***********HERE************")
         end
         say(nextline2)
+        # TODO: NEXT LINE 2 SHOULD ALSO HAVE DISCONECTED VOR PTS
+        
         say(filterts)
         say(b)
 say("+(n1)*******")
