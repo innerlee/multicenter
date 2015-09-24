@@ -2,7 +2,7 @@
 #MM=185
 MM=1
 margin=1
-N=100
+N=200
 NN=1000
 debug=false
 # 161,6
