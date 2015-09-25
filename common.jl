@@ -6,6 +6,7 @@ end
 
 using Gadfly
 using Compose
+using Colors
 
 function drawpic(data::AbstractArray)
   if size(data,2)==2

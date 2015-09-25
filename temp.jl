@@ -1,6 +1,6 @@
 
 
-sites=rand(N,2)
+
 # sites=[
 # -1 -1
 # 1 1
@@ -44,5 +44,5 @@ say()
 say("= lines: x0,y0, vx,vy, a,b =")
 say(borderrect)
 
-vorlns=voron(sites)
-drawvor(sites,vorlns[:,1:6],borderrect)
+vorlns=voron(sites,lab)
+drawvor(sites,vorlns,borderrect,lab)

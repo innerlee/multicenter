@@ -11,6 +11,10 @@ function GenerateTwoClasses(;
     rs=[.5 .5 .5],
     show=false)
 
+# centers=[3 1; 1 0; 2 -1; 4 0]
+# nums=[1 2 2 1]
+# rs=[.5 .5 .5 .5]
+
   dim=size(centers,2)
   say("[ GenerateTwoClasses | dim=$dim,show=$show ]")
 

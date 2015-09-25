@@ -1,8 +1,15 @@
 say("voronoi now")
 
 #
-function composepoints(pts)
-  compose(context(),circle(pts[:,1],pts[:,2],[.7mm]),fill([colorant"black"]), stroke([colorant"white"]))
+function composepoints(pts,labels=[])
+  if length(labels)==0
+    compose(context(),circle(pts[:,1],pts[:,2],[.7mm]),fill([colorant"black"]), stroke([colorant"white"]))
+  else
+    dc=distinguishable_colors(10)
+    #println(labels)
+    colors=[dc[3+Int64(labels[k])] for k=1:length(labels)]
+    compose(context(),circle(pts[:,1],pts[:,2],[.7mm]),fill(colors), stroke([colorant"white"]))
+  end
 end
 
 #
@@ -11,13 +18,20 @@ function transformlines(lns)
 end
 
 #
-function composelines(lns::AbstractArray)
+function composelines(lns::AbstractArray,labels=[])
   say()
   say("= in composelines() =")
   ls=transformlines(lns)
   #say(ls)
   #lines=[[(ls[i,1]+ls[i,5]*ls[i,3],ls[i,2]+ls[i,5]*ls[i,4]),(ls[i,1]+ls[i,6]*ls[i,3],ls[i,2]+ls[i,6]*ls[i,4])] for i=1:size(ls,1),j=1]
-  compose(context(), line(ls),fill([colorant"black"]), stroke([colorant"black"]))
+  if length(labels)==0
+    compose(context(), line(ls),fill([colorant"gray"]), stroke([colorant"gray"]))
+  else
+    colors=[lns[k,11]==0?colorant"gray":colorant"red" for k=1:size(lns,1)]
+    #println("in composelines:\n $labels")
+    #println("size of lns:$(size(lns,1)), size of labels:$(size(labels))")
+    compose(context(), line(ls),fill(colors), stroke(colors))
+  end
 end
 
 #
@@ -28,11 +42,12 @@ end
 # lns: n*6 (x0,y0, vx,vy, a,b)
 # ls: n*4 ((x0,y0) (x1,y1))
 # use borderrect
-function drawvor(pts,lns,border)
+function drawvor(pts,lns,border,vorptlables=[])
+  #println(size(lns))
   # preprocess them
   say()
   say("= drawvor =")
-  say(lns)
+  say(lns[:,7:10])
   # clip lines
   for i=1:size(lns,1)
     ts=[intersectlns(lns[i,:],border[k,:])[1] for k=1:size(border,1)]
@@ -47,21 +62,44 @@ function drawvor(pts,lns,border)
       lns[i,6]=max(lns[i,5],minimum([ts[ts.>0] lns[i,6]]))
     end
   end
-say()
+#println("aa")
+  # compute labels
+  labels=[]
+#  println(vorptlables)
+  if length(vorptlables)>0
+    #templab=[vorptlables[Int64(lns[k,7])]==vorptlables[Int64(lns[k,8])]?0:1 for
+    #templab=lns[:,11]
+    templab=zeros(size(lns,1))
+    templab[7]=1
+    #println("templab:\n  $templab")
+    #k=1:size(lns,1)]
+  #  println(size(templab''))
+    labels=[[0 0 0 0]'; templab'']
+  end
+#  println("bb")
   # fileter outer lines
   lns=lns[[isout(lns[k,:]) for k=1:size(lns,1)],:]
   # transforms
-  lns=[border;lns]
+  #println("size boder: $(size(tempborder[1:size(border,1),1:size(border,2)]))")
+  tempborder=zeros(size(border,1),size(lns,2))
+  # for k=1:size(border,1)
+  #   for l=1:size(border,2)
+  #     tempborder[k,l]=border[k,l]
+  #   end
+  # end
+  tempborder[1:size(border,1),1:size(border,2)]=border[1:size(border,1),1:size(border,2)]
+  lns=[tempborder;lns]
   ratio=max(b_width,b_height)
   #say(ratio)
   #say(broadcast(-,pts,[b_left b_bot])/6)
   pts=broadcast(-,pts,[b_left b_bot])/ratio
   #pts=broadcast(/,broadcast(-,pts,[b_left b_bot]),[ratio ratio])
 #say("...")
-  lns=broadcast(/,broadcast(-,lns,[b_left b_bot 0 0 0 0]),[ratio ratio 1 1 ratio ratio])
+  println("safe")
+  lns=broadcast(/,broadcast(-,lns,[[b_left b_bot] zeros(1,size(lns,2)-2)]),[[ratio ratio 1 1 ratio ratio] ones(1,size(lns,2)-6)])
   say(size(lns))
-
-  drawcomp(compose(context(),composepoints(pts),composelines(lns)))
+println("cc")
+  drawcomp(compose(context(),composepoints(pts,vorptlables),composelines(lns,labels)))
 end
 
 #
@@ -138,17 +176,20 @@ end
 # use outer vars:
 # borderrect
 # sites
-function voron(sites)
+function voron(sites,labels=[])
   say()
+  #println("voron get labels:\n $labels")
   say("== voron() ==")
   M=size(sites,1)
-  # sort along x axis
-  p=sortperm(sites[:,1])
-  sites=[sites[p[i],j] for i=1:size(sites,1),j=1:size(sites,2)]
   # perturb sites
   ep=1e-12
-  println(size(sites))
+  #println(size(sites))
   sites=sites[:,1:2]+ep*rand(M,2)
+  # sort along x axis
+  p=sortperm(sites[:,1])
+  #println("sortperm:\n $p")
+  #println(p)
+  sites=[sites[p[i],j] for i=1:size(sites,1),j=1:size(sites,2)]
   #sites[:,1:2]=aftersalt
 
   #####################
@@ -416,7 +457,19 @@ say("(q)")
 say("(r)")
   end
 say("(s)")
+#println("lines before:\n $(lns[:,7:11])")
 say(lns[:,7:11])
-  lns[find(lns[:,11].==0),:]
+  templns=lns[find(lns[:,11].==0),:]
+  #println(templns[1:10,7:8])
+  for k=1:size(templns,1)
+    templns[k,7]=p[Int64(templns[k,7])]
+    templns[k,8]=p[Int64(templns[k,8])]
+    templns[k,11]=(labels[Int64(templns[k,7])]==labels[Int64(templns[k,8])]?0:1)
+  end
+  #println("lines after:\n $(templns[:,7:11])")
+  #println(templns[1:10,7:8])
+  #println([labels[Int64(templns[k,l])] for k=1:size(templns,1),l=7:8])
+  #println(p)
+  templns
   #lns
 end
