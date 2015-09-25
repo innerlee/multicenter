@@ -70,7 +70,7 @@ function drawvor(pts,lns,border,vorptlables=[])
     #templab=[vorptlables[Int64(lns[k,7])]==vorptlables[Int64(lns[k,8])]?0:1 for
     #templab=lns[:,11]
     templab=zeros(size(lns,1))
-    templab[7]=1
+    #templab[7]=1
     #println("templab:\n  $templab")
     #k=1:size(lns,1)]
   #  println(size(templab''))

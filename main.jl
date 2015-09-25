@@ -1,7 +1,7 @@
 
 #MM=185
 MM=1
-margin=1
+margin=.5
 N=200
 NN=1000
 debug=false
